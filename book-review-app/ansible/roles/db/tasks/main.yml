@@ -1,0 +1,58 @@
+# ansible/roles/db/tasks/main.yml
+
+---
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+  become: yes
+
+- name: Install MySQL server and Python MySQL driver
+  apt:
+    name:
+      - mysql-server
+      - python3-pymysql
+    state: present
+  become: yes
+
+- name: Ensure MySQL listens on all interfaces
+  lineinfile:
+    path: /etc/mysql/mysql.conf.d/mysqld.cnf
+    regexp: '^bind-address'
+    line: 'bind-address            = 0.0.0.0'
+  notify: Restart MySQL
+  become: yes
+
+# Optional: Make sure MySQL is started and enabled
+- name: Ensure MySQL service is running and enabled
+  service:
+    name: mysql
+    state: started
+    enabled: yes
+  become: yes
+
+# Create database
+- name: Ensure application database exists
+  community.mysql.mysql_db:
+    name: "{{ db_name }}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  become: yes
+
+# Create app user with privileges from any host (%)
+- name: Ensure application DB user exists with correct privileges
+  community.mysql.mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    host: "%"
+    priv: "{{ db_name }}.*:ALL"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  become: yes
+
+# Flush privileges just to be extra safe
+- name: Flush MySQL privileges
+  community.mysql.mysql_query:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    query: "FLUSH PRIVILEGES;"
+  become: yes

@@ -1,0 +1,5 @@
+# ansible/group_vars/db.yml
+
+db_user: "mysqladmin"
+db_password: "DevSecureDBPassword123!"
+db_name: "book_review_db"

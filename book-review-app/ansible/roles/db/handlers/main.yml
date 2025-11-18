@@ -1,0 +1,9 @@
+# ansible/roles/db/handlers/main.yml
+
+---
+
+- name: Restart MySQL
+  service:
+    name: mysql
+    state: restarted
+  become: yes

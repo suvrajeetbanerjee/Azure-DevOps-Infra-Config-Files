@@ -1,0 +1,475 @@
+- name: Clone backend repository
+  git:
+    repo: "{{ backend_repo_url }}"
+    dest: /opt/backend
+    version: main
+    force: yes
+
+- name: Set ownership to azureuser for backend app
+  file:
+    path: /opt/backend
+    owner: azureuser
+    group: azureuser
+    recurse: yes
+
+- name: Install backend dependencies
+  npm:
+    path: /opt/backend/backend
+    state: present
+
+- name: Create PM2 ecosystem.config.js for backend
+  copy:
+    dest: /opt/backend/backend/ecosystem.config.js
+    content: |
+      module.exports = {
+        apps : [{
+          name: 'book-review-backend',
+          script: 'src/server.js',
+          env: {
+            DB_HOST: '{{ db_host }}',
+            DB_USER: '{{ db_user }}',
+            DB_PASS: '{{ db_password }}',
+            DB_NAME: '{{ db_name }}',
+            DB_DIALECT: 'mysql',
+            JWT_SECRET: '{{ jwt_secret }}',
+            ALLOWED_ORIGINS: '{{ allowed_origins }}'
+          }
+        }]
+      };
+  notify: Restart backend with PM2
+
+- name: Ensure pip is installed
+  apt:
+    name: python3-pip
+    state: present
+  become: yes
+
+- name: Install PyMySQL library for Ansible MySQL modules
+  pip:
+    name: PyMySQL
+    executable: pip3
+
+- name: Install MySQL client (if not already installed)
+  apt:
+    name: mysql-client
+    state: present
+  become: yes
+
+- name: Create database if not exists using mysql command
+  shell: |
+    mysql -h {{ db_host }} -u {{ db_user }} -p{{ db_password }} -e "CREATE DATABASE IF NOT EXISTS {{ db_name }};"
+  args:
+    executable: /bin/bash
+  environment:
+    MYSQL_PWD: "{{ db_password }}"
+  become: yes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # ansible/roles/backend/tasks/main.yml
+
+# ---
+
+# - name: Update apt cache
+#   become: yes
+#   apt:
+#     update_cache: yes
+
+# - name: Install backend dependencies (Node.js, npm, MySQL client, git)
+#   become: yes
+#   apt:
+#     name:
+#       - curl
+#       - git
+#       - nodejs
+#       - npm
+#       - mysql-client
+#     state: present
+
+# # 🔥 THIS replaces your broken "npm=8.5.1~ds-1" task
+
+# - name: Create backend app directory
+#   become: yes
+#   file:
+#     path: /opt/book-review-backend
+#     state: directory
+#     owner: "{{ ansible_user }}"
+#     group: "{{ ansible_user }}"
+#     mode: "0755"
+
+# - name: Copy backend source code from repo to backend VM
+#   # Run on the Azure DevOps agent (where the repo is checked out)
+#   # and push files to the backend VM
+#   delegate_to: localhost
+#   synchronize:
+#     src: "../backend/"
+#     dest: "/opt/book-review-backend"
+#     delete: yes
+#     rsync_opts:
+#       - "--exclude=node_modules"
+
+# - name: Install backend Node.js dependencies (npm install)
+#   become: yes
+#   args:
+#     chdir: /opt/book-review-backend
+#   command: npm install
+
+# - name: Create backend .env file
+#   become: yes
+#   copy:
+#     dest: /opt/book-review-backend/.env
+#     content: |
+#       DB_HOST={{ db_host }}
+#       DB_PORT={{ db_port }}
+#       DB_USER={{ db_user }}
+#       DB_PASSWORD={{ db_password }}
+#       DB_NAME={{ db_name }}
+#       PORT={{ backend_app_port }}
+
+# - name: Ensure database exists on MySQL VM
+#   # ❗ NOTE: db_host must be PURE IP/DNS (128.24.55.60), NOT "http://..."
+#   shell: |
+#     mysql -h {{ db_host }} -P {{ db_port }} -u {{ db_user }} -p'{{ db_password }}' \
+#       -e "CREATE DATABASE IF NOT EXISTS {{ db_name }};"
+#   args:
+#     warn: false
+#   register: create_db_cmd
+#   changed_when: false
+#   failed_when: create_db_cmd.rc != 0
+
+# - name: Start backend application (npm start in background)
+#   become: yes
+#   shell: |
+#     cd /opt/book-review-backend
+#     nohup npm start > /var/log/bookreview-backend.log 2>&1 &
+#   args:
+#     executable: /bin/bash
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # - name: Clone backend repository
+# #   git:
+# #     repo: "{{ backend_repo_url }}"
+# #     dest: /opt/backend
+# #     version: main
+# #     force: yes
+
+# # - name: Set ownership to azureuser for backend app
+# #   file:
+# #     path: /opt/backend
+# #     owner: azureuser
+# #     group: azureuser
+# #     recurse: yes
+
+# # - name: Install backend dependencies
+# #   npm:
+# #     path: /opt/backend/backend
+# #     state: present
+
+# # - name: Create PM2 ecosystem.config.js for backend
+# #   copy:
+# #     dest: /opt/backend/backend/ecosystem.config.js
+# #     content: |
+# #       module.exports = {
+# #         apps : [{
+# #           name: 'book-review-backend',
+# #           script: 'src/server.js',
+# #           env: {
+# #             DB_HOST: '{{ db_host }}',
+# #             DB_USER: '{{ db_user }}',
+# #             DB_PASS: '{{ db_password }}',
+# #             DB_NAME: '{{ db_name }}',
+# #             DB_DIALECT: 'mysql',
+# #             JWT_SECRET: '{{ jwt_secret }}',
+# #             ALLOWED_ORIGINS: '{{ allowed_origins }}'
+# #           }
+# #         }]
+# #       };
+# #   notify: Restart backend with PM2
+
+# # - name: Ensure pip is installed
+# #   apt:
+# #     name: python3-pip
+# #     state: present
+# #   become: yes
+
+# # - name: Install PyMySQL library for Ansible MySQL modules
+# #   pip:
+# #     name: PyMySQL
+# #     executable: pip3
+
+# # - name: Install MySQL client (if not already installed)
+# #   apt:
+# #     name: mysql-client
+# #     state: present
+# #   become: yes
+
+# # - name: Create database if not exists using mysql command
+# #   shell: |
+# #     mysql -h {{ db_host }} -u {{ db_user }} -p{{ db_password }} -e "CREATE DATABASE IF NOT EXISTS {{ db_name }};"
+# #   args:
+# #     executable: /bin/bash
+# #   environment:
+# #     MYSQL_PWD: "{{ db_password }}"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # # ---
+# # # - name: Ensure APT cache is up to date
+# # #   apt:
+# # #     update_cache: yes
+# # #     cache_valid_time: 3600
+# # #   become: yes
+
+# # # - name: Install required system packages
+# # #   apt:
+# # #     name:
+# # #       - git
+# # #       - curl
+# # #       - python3
+# # #       - python3-pip
+# # #       - python3-venv
+# # #       - mysql-client
+# # #     state: present
+# # #   become: yes
+
+# # # - name: Install Node.js (backend requirement)
+# # #   apt:
+# # #     name: nodejs
+# # #     state: present
+# # #   become: yes
+
+# # # - name: Install npm
+# # #   apt:
+# # #     name: npm
+# # #     state: present
+# # #   become: yes
+
+# # # - name: Create backend app directory
+# # #   file:
+# # #     path: "{{ backend_app_dir }}"
+# # #     state: directory
+# # #     owner: "{{ ansible_user }}"
+# # #     group: "{{ ansible_user }}"
+# # #     mode: '0755'
+# # #   become: yes
+
+# # # - name: Clone backend repo
+# # #   git:
+# # #     repo: "{{ repo_url }}"
+# # #     dest: "{{ backend_app_dir }}"
+# # #     version: "{{ repo_version }}"
+# # #     force: yes
+# # #   become: yes
+
+# # # - name: Install backend dependencies
+# # #   npm:
+# # #     path: "{{ backend_app_dir }}/backend"
+# # #     production: yes
+# # #   become: yes
+
+# # # - name: Create .env file for backend
+# # #   copy:
+# # #     dest: "{{ backend_app_dir }}/backend/.env"
+# # #     mode: '0644'
+# # #     content: |
+# # #       PORT=3001
+# # #       DB_HOST={{ db_host }}
+# # #       DB_PORT={{ db_port }}
+# # #       DB_USER={{ db_user }}
+# # #       DB_PASSWORD={{ db_password }}
+# # #       DB_NAME={{ db_name }}
+# # #   become: yes
+
+# # # # ---------- DB SETUP ON DB VM (REMOTE) ----------
+
+# # # - name: Create database if not exists using mysql command
+# # #   command: >
+# # #     mysql
+# # #     -h {{ db_host }}
+# # #     -P {{ db_port }}
+# # #     -u {{ db_user }}
+# # #     -p{{ db_password }}
+# # #     -e "CREATE DATABASE IF NOT EXISTS {{ db_name }};"
+# # #   register: create_db_result
+# # #   changed_when: "'ERROR' not in create_db_result.stderr"
+# # #   failed_when: create_db_result.rc != 0 and "'already exists' not in create_db_result.stderr"
+# # #   become: yes
+
+# # # # ---------- SYSTEMD SERVICE FOR BACKEND ----------
+
+# # # - name: Create systemd service file for backend
+# # #   copy:
+# # #     dest: /etc/systemd/system/{{ backend_service_name }}.service
+# # #     mode: '0644'
+# # #     content: |
+# # #       [Unit]
+# # #       Description=Book Review Backend Service
+# # #       After=network.target
+
+# # #       [Service]
+# # #       Type=simple
+# # #       WorkingDirectory={{ backend_app_dir }}/backend
+# # #       ExecStart=/usr/bin/npm start
+# # #       Restart=always
+# # #       RestartSec=5
+# # #       User={{ ansible_user }}
+# # #       EnvironmentFile={{ backend_app_dir }}/backend/.env
+
+# # #       [Install]
+# # #       WantedBy=multi-user.target
+# # #   become: yes
+
+# # # - name: Reload systemd daemon
+# # #   systemd:
+# # #     daemon_reload: yes
+# # #   become: yes
+
+# # # - name: Enable and start backend service
+# # #   systemd:
+# # #     name: "{{ backend_service_name }}"
+# # #     enabled: yes
+# # #     state: started
+# # #   become: yes
+
+
+
+
+
+# # # # - name: Clone backend repository
+# # # #   git:
+# # # #     repo: "{{ backend_repo_url }}"
+# # # #     dest: /opt/backend
+# # # #     version: main
+# # # #     force: yes
+
+# # # # - name: Set ownership to azureuser for backend app
+# # # #   file:
+# # # #     path: /opt/backend
+# # # #     owner: azureuser
+# # # #     group: azureuser
+# # # #     recurse: yes
+
+# # # # - name: Install backend dependencies
+# # # #   npm:
+# # # #     path: /opt/backend/backend
+# # # #     state: present
+
+# # # # - name: Create PM2 ecosystem.config.js for backend
+# # # #   copy:
+# # # #     dest: /opt/backend/backend/ecosystem.config.js
+# # # #     content: |
+# # # #       module.exports = {
+# # # #         apps : [{
+# # # #           name: 'book-review-backend',
+# # # #           script: 'src/server.js',
+# # # #           env: {
+# # # #             DB_HOST: '{{ db_host }}',
+# # # #             DB_USER: '{{ db_user }}',
+# # # #             DB_PASS: '{{ db_password }}',
+# # # #             DB_NAME: '{{ db_name }}',
+# # # #             DB_DIALECT: 'mysql',
+# # # #             JWT_SECRET: '{{ jwt_secret }}',
+# # # #             ALLOWED_ORIGINS: '{{ allowed_origins }}'
+# # # #           }
+# # # #         }]
+# # # #       };
+# # # #   notify: Restart backend with PM2
+
+# # # # - name: Ensure pip is installed
+# # # #   apt:
+# # # #     name: python3-pip
+# # # #     state: present
+# # # #   become: yes
+
+# # # # - name: Install PyMySQL library for Ansible MySQL modules
+# # # #   pip:
+# # # #     name: PyMySQL
+# # # #     executable: pip3
+
+# # # # - name: Install MySQL client (if not already installed)
+# # # #   apt:
+# # # #     name: mysql-client
+# # # #     state: present
+# # # #   become: yes
+
+# # # # - name: Create database if not exists using mysql command
+# # # #   shell: |
+# # # #     mysql -h {{ db_host }} -u {{ db_user }} -p{{ db_password }} -e "CREATE DATABASE IF NOT EXISTS {{ db_name }};"
+# # # #   args:
+# # # #     executable: /bin/bash
+# # # #   environment:
+# # # #     MYSQL_PWD: "{{ db_password }}"
+# # # #   become: yes
+
+
+# # # # # - name: Create database if not exists using mysql command
+# # # # #   shell: |
+# # # # #     mysql -h {{ db_host }} -u {{ db_user }} -p{{ db_password }} -e "CREATE DATABASE IF NOT EXISTS {{ db_name }};"
+# # # # #   args:
+# # # # #     executable: /bin/bash
+# # # # #   environment:
+# # # # #     MYSQL_PWD: "{{ db_password }}"

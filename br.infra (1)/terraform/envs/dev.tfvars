@@ -1,0 +1,12 @@
+application_name               = "DevOps1-pm1"
+environment                    = "dev"
+location                       = "Central India"
+admin_username                 = "azureuser"
+admin_password                 = "DevSecurePassword123!"
+mysql_admin_username           = "mysqladmin"
+mysql_admin_password           = "DevSecureDBPassword123!"
+mysql_database_name            = "bookreviews_dev"
+vnet_address_space             = ["10.0.0.0/16"]
+public_subnet_address_prefixes = ["10.0.1.0/24"]
+vm_size                        = "Standard_B1s"
+ssh_public_key                 = "~/.ssh/id_rsa.pub"
